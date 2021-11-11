@@ -26,18 +26,29 @@ class Net(nn.Module):
         x = self.fc4(x)
         return F.log_softmax(x, dim=1)
 
+# GPU
+if torch.cuda.is_available():
+    device = torch.device("cuda:0")
+    print("Pytorch is running on GPU")
+else:
+    device = torch.device("cpu")
+    print("Pytorch is running on CPU")
+
 
 
 # Net Declaration
 net = Net(784)
+net.to(device)  # Puts the entire net to GPU, if there is one to access
 optimizer = optim.Adam(net.parameters(), lr=0.001)
 EPOCHS = 3
+
 
 t1 = time()
 print('Starting training...')
 
 # Training
 for epoch in range(EPOCHS):
+    t_temp_1 = time()
     for data in trainset:
         # data is a batch of featuresets and labels
         X, y = data
@@ -46,7 +57,9 @@ for epoch in range(EPOCHS):
         loss = F.nll_loss(output, y)
         loss.backward()
         optimizer.step()
-    print(loss)
+    t_temp_2 = time()
+    print(f'Loss: {loss}, this epoch took: {t_temp_2 - t_temp_1} seconds')
+
 
 t2 = time()
 print(f'Finished Training in {(t2-t1): .3} seconds')
@@ -61,7 +74,7 @@ with torch.no_grad():
         X, y = data
         output = net(X.view(-1, 784))
         for idx, i in enumerate(output):
-            if torch.argmax(i) == y[idx]:
+            if torch.argmax(i).to(device) == y[idx]:
                 correct += 1
             total += 1
     print(f'Accuracy: {round(correct / total, 3)}')
