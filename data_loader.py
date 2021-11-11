@@ -1,6 +1,23 @@
 import pandas as pd
 
 """
+# This code was copied from word text-sentiment-analysis.py - some fixes need to be made to make it work here
+# Generate Word Index file 
+# Get list of 'review' column
+reviewdata = list(df['review'])
+
+# Create word index file
+print("Generating word index file...")
+t1 = time()
+word_index_dict, max_word_count = create_word_index(reviewdata)
+save_dict(word_index_dict, "complete_dict")
+t2 = time()
+print(f'Generating the word index file took {(t2-t1):.3} seconds')
+"""
+
+
+
+"""
 Cleans the word from the unwanted characters in out string data
 """
 def clean_word(word):
@@ -70,8 +87,11 @@ def create_input_matrix(strings, word_dict, max_words):
                 x = word_dict[word]
             except:
                 x = 1
-            temp.append(x)
-        while len(temp) <= max_words:
+            if len(temp) == max_words:  # Stop if any given string is too long
+                break
+            else:
+                temp.append(x)
+        while len(temp) < max_words:
             temp.append(0)
         output.append(temp)
     return output
