@@ -16,6 +16,15 @@ print(f'Generating the word index file took {(t2-t1):.3} seconds')
 """
 
 
+"""
+Cleans a string from unwanted characters
+"""
+def only_letters(input):
+    valids = []
+    for character in input:
+        if character.isalpha():
+            valids.append(character)
+    return ''.join(valids)
 
 """
 Cleans the word from the unwanted characters in out string data
