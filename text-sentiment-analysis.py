@@ -7,14 +7,14 @@ import torch.optim as optim
 import torch
 
 # HYPERPARAMETERS
-MAX_SENTENCE_LENGTH = 650
+MAX_SENTENCE_LENGTH = 850
 LEARNING_RATE = 0.001
 DECAY = 5e-5
-HIDDEN_1 = 64
-HIDDEN_2 = 64
-HIDDEN_3 = 64
+HIDDEN_1 = 264
+HIDDEN_2 = 264
+HIDDEN_3 = 264
 BATCH_SIZE = 50
-EPOCHS = 200
+EPOCHS = 1000
 TEST_SPLIT = 10000 # How much of our data should we test on
 
 # Read IMDB csv
@@ -22,21 +22,27 @@ df = pd.read_csv('data/imdb.csv')
 df['y_output'] = (df['sentiment'] == 'positive') * 1
 
 # Create Word Index Dictionary
-df_word_index = pd.read_csv('progress_dict_20000.csv', index_col=0)
-index_word = df_word_index.to_dict('dict')['0']
+df_word_index = pd.read_csv('cleaned-word-dict.csv', index_col=0)
+index_word = df_word_index.to_dict('dict')
+print(index_word.keys())
+print(len(index_word.values()))
+print(list(index_word.items())[:1])
 word_index = flip_dict(index_word)
 
 # Prepare Data
 print('Preparing Data...')
-inputs = torch.Tensor(create_input_matrix(list(df['review']), word_index, 650))
+
+df['review'] = df['review'].apply(lambda string: string.lower())
+
+inputs = torch.Tensor(create_input_matrix(list(df['review']), word_index, MAX_SENTENCE_LENGTH))
 lables = list(df['y_output'])
 
 X_test = torch.tensor(inputs[:TEST_SPLIT])
+norm = (X_test - (MAX_SENTENCE_LENGTH / 2)) / (MAX_SENTENCE_LENGTH / 2) 
+
 y_test = torch.tensor(lables[:TEST_SPLIT])
 X_train = torch.tensor(inputs[TEST_SPLIT:])
 y_train = torch.tensor(lables[TEST_SPLIT:])
-
-print(len(X_train), len(y_train), len(X_test), len(y_test))
 
 # Model Creation
 
@@ -47,6 +53,8 @@ class Net(nn.Module):
         self.fc2 = nn.Linear(HIDDEN_1, HIDDEN_2)
         self.fc3 = nn.Linear(HIDDEN_2, HIDDEN_3)
         self.fc4 = nn.Linear(HIDDEN_3, 2)
+        self.dropout1 = nn.Dropout(0.25)
+        self.dropout2 = nn.Dropout(0.25)
 
     def forward(self, x):
         x = F.relu(self.fc1(x))
@@ -70,38 +78,38 @@ optimizer = optim.Adam(net.parameters(), lr=LEARNING_RATE)
 # Training
 print('Training...')
 for epoch in range(EPOCHS):
-    t1 = time()
-    # BATCHING - TODO! for batch_nr in range(MAX_SENTENCE_LENGTH // BATCH_SIZE):
-    net.zero_grad()
-    output = net.forward(X_train)
-    loss = F.nll_loss(output, y_train)
-    loss.backward()
-    optimizer.step()
-    t2 = time()
-    print(f'Loss: {loss:.5}, this epoch took: {t2 - t1} seconds')
+    for batch in range(len(X_train) // BATCH_SIZE):
+        X_batch = X_train[batch * BATCH_SIZE : (batch + 1) * BATCH_SIZE]
+        y_batch = y_train[batch * BATCH_SIZE : (batch + 1) * BATCH_SIZE]
+        net.zero_grad()
+        output = net(X_batch.to(device))
+        loss = F.nll_loss(output, y_batch.to(device))
+        loss.backward()
+        optimizer.step()
+        print(f"performed batch from {batch * BATCH_SIZE} to { (batch + 1) * BATCH_SIZE} ")
+    if not epoch % 100:
+        print(f'Epoch: {epoch}, Loss: {loss:.5}')
 
 # Testing
 print('Testing...')
 correct = 0
 total = 0
 with torch.no_grad():
-
-    output = net(X_test)
+    output = net(X_test.to(device))
     for idx, i in enumerate(output):
-        if torch.argmax(i).to(device) == y_test[idx]:
+        if torch.argmax(i).to(device) == y_test[idx].to(device):
             correct += 1
         total += 1
     print(f'Accuracy: {(correct / total):.3}')
 
 # Testing on trainset - Did it meorize?
-print('Testing...')
 correct = 0
 total = 0
 with torch.no_grad():
 
-    output = net(X_train)
+    output = net(X_train.to(device))
     for idx, i in enumerate(output):
-        if torch.argmax(i).to(device) == y_train[idx]:
+        if torch.argmax(i).to(device) == y_train[idx].to(device):
             correct += 1
         total += 1
     print(f'Accuracy in trainset: {(correct / total):.3}')

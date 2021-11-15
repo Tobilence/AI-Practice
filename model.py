@@ -30,6 +30,7 @@ class Net(nn.Module):
 if torch.cuda.is_available():
     device = torch.device("cuda:0")
     print("Pytorch is running on GPU")
+    print(torch.cuda.get_device_name(0))
 else:
     device = torch.device("cpu")
     print("Pytorch is running on CPU")
@@ -46,6 +47,7 @@ EPOCHS = 3
 t1 = time()
 print('Starting training...')
 
+
 # Training
 for epoch in range(EPOCHS):
     t_temp_1 = time()
@@ -53,13 +55,12 @@ for epoch in range(EPOCHS):
         # data is a batch of featuresets and labels
         X, y = data
         net.zero_grad()
-        output = net(X.view(-1, 784))
-        loss = F.nll_loss(output, y)
+        output = net(X.view(-1, 784).to(device))
+        loss = F.nll_loss(output, y.to(device))
         loss.backward()
         optimizer.step()
     t_temp_2 = time()
-    print(f'Loss: {loss}, this epoch took: {t_temp_2 - t_temp_1} seconds')
-
+    print(f'Loss: {loss}, epoch {epoch} took: {t_temp_2 - t_temp_1} seconds')
 
 t2 = time()
 print(f'Finished Training in {(t2-t1): .3} seconds')
@@ -72,7 +73,7 @@ print('Testing model...')
 with torch.no_grad():
     for data in testset:
         X, y = data
-        output = net(X.view(-1, 784))
+        output = net(X.view(-1, 784).to(device))
         for idx, i in enumerate(output):
             if torch.argmax(i).to(device) == y[idx]:
                 correct += 1
@@ -83,7 +84,7 @@ t3 = time()
 print(f'Calculated accuracy in {t3-t2: .3} seconds')
 
 # Predict
-print(torch.argmax(net(X[3].view(-1, 784))[0]))
+print(torch.argmax(net(X[3].view(-1, 784).to(device))[0]))
 
 
 
