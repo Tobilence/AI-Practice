@@ -23,25 +23,23 @@ df['y_output'] = (df['sentiment'] == 'positive') * 1
 
 # Create Word Index Dictionary
 df_word_index = pd.read_csv('cleaned-word-dict.csv', index_col=0)
-index_word = df_word_index.to_dict('dict')
-print(index_word.keys())
-print(len(index_word.values()))
-print(list(index_word.items())[:1])
+index_word = df_word_index.to_dict('dict')['WORD']  # gets rid of the nested dict and makes sure that we only take the word column (the key is an int, value is the desired word)
 word_index = flip_dict(index_word)
 
 # Prepare Data
 print('Preparing Data...')
 
-df['review'] = df['review'].apply(lambda string: string.lower())
+df['review'] = df['review'].apply(lambda string: string.lower())  # makes all of the strings in 'review' to lower case
 
 inputs = torch.Tensor(create_input_matrix(list(df['review']), word_index, MAX_SENTENCE_LENGTH))
 lables = list(df['y_output'])
 
 X_test = torch.tensor(inputs[:TEST_SPLIT])
-norm = (X_test - (MAX_SENTENCE_LENGTH / 2)) / (MAX_SENTENCE_LENGTH / 2) 
-
+X_test_norm = (X_test - (MAX_SENTENCE_LENGTH / 2)) / (MAX_SENTENCE_LENGTH / 2)
 y_test = torch.tensor(lables[:TEST_SPLIT])
+
 X_train = torch.tensor(inputs[TEST_SPLIT:])
+X_train_norm = (X_train - (MAX_SENTENCE_LENGTH / 2)) / (MAX_SENTENCE_LENGTH / 2)
 y_train = torch.tensor(lables[TEST_SPLIT:])
 
 # Model Creation
@@ -86,8 +84,7 @@ for epoch in range(EPOCHS):
         loss = F.nll_loss(output, y_batch.to(device))
         loss.backward()
         optimizer.step()
-        print(f"performed batch from {batch * BATCH_SIZE} to { (batch + 1) * BATCH_SIZE} ")
-    if not epoch % 100:
+    if not epoch % 10:
         print(f'Epoch: {epoch}, Loss: {loss:.5}')
 
 # Testing
