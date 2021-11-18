@@ -83,9 +83,8 @@ if torch.cuda.is_available():
     device = torch.device("cuda:0")
     print("Running on GPU")
 else:
-    device = torchdevice("cpu")
+    device = torch.device("cpu")
     print("Running on CPU")
-
 
 net = Net().to(device)
 
@@ -179,7 +178,7 @@ def train():
                 acc, loss = fwd_pass(batch_X, batch_y, train=True)
                 if i % 50 == 0:
                     val_acc, val_loss = test(size=100)
-                    f.write(f"{MODEL_NAME},{round(time.time(), 3)},{round(float(acc),2)},{round(float(loss),4)},{round(float(val_acc),2)},{round(float(val_loss),4)} \n ")
+                    #f.write(f"{MODEL_NAME},{round(time.time(), 3)},{round(float(acc),2)},{round(float(loss),4)},{round(float(val_acc),2)},{round(float(val_loss),4)} \n ")
 
 
 train()
