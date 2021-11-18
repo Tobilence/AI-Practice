@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import time
 
 REBUILD_DATA = False
 
@@ -48,9 +49,6 @@ if REBUILD_DATA:
 else:
     training_data = np.load("training_data.npy", allow_pickle=True)
 
-print(len(training_data))
-
-
 class Net(nn.Module):
     def __init__(self):
         super().__init__()
@@ -81,7 +79,15 @@ class Net(nn.Module):
         return F.softmax(x, dim=1)  # TODO: See how it changes if you remove the activation function
 
 
-net = Net()
+if torch.cuda.is_available():
+    device = torch.device("cuda:0")
+    print("Running on GPU")
+else:
+    device = torchdevice("cpu")
+    print("Running on CPU")
+
+
+net = Net().to(device)
 
 optimizer = optim.Adam(net.parameters(), lr=0.001)
 loss_function = nn.MSELoss()
@@ -91,26 +97,24 @@ X = X/255.0  # Normalize
 y = torch.Tensor(np.array([i[1] for i in training_data]))  # Only use the label
 VAL_PCT = 0.1
 val_size = int(len(X)*VAL_PCT)
-print(val_size)
 
 train_X = X[:-val_size]
 train_y = y[:-val_size]
 
 test_X = X[-val_size:]
 test_y = y[-val_size:]
-print(len(train_X))
-print(len(test_X))
+'''
 
 BATCH_SIZE = 100
 EPOCHS = 1
 
 for epoch in range(EPOCHS):
     for i in tqdm(range(0, len(train_X), BATCH_SIZE)):
-        batch_X = train_X[i:i+BATCH_SIZE].view(-1, 1, 50, 50)
-        batch_y = train_y[i:i+BATCH_SIZE]
+        batch_X = train_X[i:i+BATCH_SIZE].view(-1, 1, 50, 50).to(device)
+        batch_y = train_y[i:i+BATCH_SIZE].to(device)
 
         net.zero_grad()
-        outputs = net(batch_X)
+        outputs = net(batch_X).to(device)
         loss = loss_function(outputs, batch_y)
         loss.backward()
         optimizer.step()
@@ -123,11 +127,82 @@ total = 0
 
 with torch.no_grad():
     for i in tqdm(range(len(test_X))):
-        real_class = torch.argmax(test_y[i])  # y is one hot encoded!
-        net_out = net(test_X[i].view(-1, 1, 50, 50))[0]
+        real_class = torch.argmax(test_y[i].to(device))  # y is one hot encoded!
+        net_out = net(test_X[i].view(-1, 1, 50, 50).to(device))[0].to(device)
         predicted_class = torch.argmax(net_out)
         if predicted_class == real_class:
             correct += 1
         total += 1
 
 print(f"Accuracy: {(correct/total):.3}")
+'''
+
+def fwd_pass(X, y, train=False):
+    if train:
+        net.zero_grad()
+    outputs = net(X)
+    matches = [torch.argmax(i) == torch.argmax(j) for i, j in zip(outputs, y)]
+    acc = matches.count(True)/len(matches)
+    loss = loss_function(outputs, y)
+    
+    if train:
+        loss.backward()
+        optimizer.step()
+    return acc, loss
+    
+def test(size=1000):
+    random_start = np.random.randint(len(test_X)-size)
+    with torch.no_grad():
+        X, y = test_X[random_start:random_start+size], test_y[random_start:random_start+size]
+    val_acc, val_loss = fwd_pass(X.view(-1, 1, 50, 50).to(device), y.to(device))
+    return val_acc, val_loss
+
+val_acc, val_loss = test(size=32)
+print(val_acc, val_loss)
+
+
+MODEL_NAME = f"model-{int(time.time())}"
+
+net = Net().to(device)
+optimizer = optim.Adam(net.parameters(), lr=0.001)
+loss_function = nn.MSELoss()
+
+print(f'Training {MODEL_NAME} ...')
+def train():
+    BATCH_SIZE=100
+    EPOCHS=8
+    with open("model.log", "a") as f:
+        for epoch in range(EPOCHS):
+            for i in tqdm(range(0, len(train_X), BATCH_SIZE)):
+                batch_X = train_X[i:i+BATCH_SIZE].view(-1,1,50,50).to(device)
+                batch_y = train_y[i:i+BATCH_SIZE].to(device)
+                acc, loss = fwd_pass(batch_X, batch_y, train=True)
+                if i % 50 == 0:
+                    val_acc, val_loss = test(size=100)
+                    f.write(f"{MODEL_NAME},{round(time.time(), 3)},{round(float(acc),2)},{round(float(loss),4)},{round(float(val_acc),2)},{round(float(val_loss),4)} \n ")
+
+
+train()
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    

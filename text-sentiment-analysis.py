@@ -10,11 +10,11 @@ import torch
 MAX_SENTENCE_LENGTH = 850
 LEARNING_RATE = 0.001
 DECAY = 5e-5
-HIDDEN_1 = 264
-HIDDEN_2 = 264
-HIDDEN_3 = 264
-BATCH_SIZE = 50
-EPOCHS = 1000
+HIDDEN_1 = 512
+HIDDEN_2 = 512
+HIDDEN_3 = 512
+BATCH_SIZE = 128
+EPOCHS = 10000
 TEST_SPLIT = 10000 # How much of our data should we test on
 
 # Read IMDB csv
@@ -76,23 +76,26 @@ optimizer = optim.Adam(net.parameters(), lr=LEARNING_RATE)
 # Training
 print('Training...')
 for epoch in range(EPOCHS):
+    loss_sum = 0
     for batch in range(len(X_train) // BATCH_SIZE):
-        X_batch = X_train[batch * BATCH_SIZE : (batch + 1) * BATCH_SIZE]
+        X_batch = X_train_norm[batch * BATCH_SIZE : (batch + 1) * BATCH_SIZE]
         y_batch = y_train[batch * BATCH_SIZE : (batch + 1) * BATCH_SIZE]
         net.zero_grad()
         output = net(X_batch.to(device))
         loss = F.nll_loss(output, y_batch.to(device))
+        loss_sum = loss_sum + loss
         loss.backward()
         optimizer.step()
     if not epoch % 10:
-        print(f'Epoch: {epoch}, Loss: {loss:.5}')
+        avg_loss = loss_sum / BATCH_SIZE
+        print(f'Epoch: {epoch}, Loss: {avg_loss:.5}')
 
 # Testing
 print('Testing...')
 correct = 0
 total = 0
 with torch.no_grad():
-    output = net(X_test.to(device))
+    output = net(X_test_norm.to(device))
     for idx, i in enumerate(output):
         if torch.argmax(i).to(device) == y_test[idx].to(device):
             correct += 1
