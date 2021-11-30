@@ -128,5 +128,5 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-KAGGLE/**
+convnet-practice/KAGGLE/**
 MNIST/**
